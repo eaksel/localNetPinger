@@ -1,26 +1,32 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os, sys, subprocess, socket, ipaddress, threading, time
 
 host_name = socket.gethostname()
 
 def get_ip():
+    """
+    Get the IP address used to access the local network of the host.
+    """
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     try:
         s.connect(('1.1.1.1', 1))
-        IP = s.getsockname()[0]
+        ip = s.getsockname()[0]
     except:
-        IP = '127.0.0.1'
+        ip = '127.0.0.1'
     finally:
         s.close()
-    return IP
+    return ip
 
 host_ip = get_ip()
 
 def get_os():
+    """
+    Get the OS platform of the host (Windows/Linux).
+    """
     my_os = sys.platform
-    if "win" in my_os:
+    if "win" in my_os.lower():
         return "windows"
-    elif "linux" in my_os:
+    elif "linux" in my_os.lower():
         return "linux"
     else:
         print("The operating system of this host couldn't be determined.")
@@ -29,6 +35,9 @@ def get_os():
 host_os = get_os()
 
 def get_netmask():
+    """
+    Get the netmask associated with the IP address retrieved by the "get_ip" function.
+    """
     if host_os == "windows":
         proc = subprocess.Popen('ipconfig',stdout=subprocess.PIPE)
         while True:
@@ -64,6 +73,10 @@ icmp_alive = []
 icmp_unknown = []
 
 def ping(host):
+    """
+    Send ping using the subprocess module. 
+    The variable "host_os" must be set to either "windows" or "linux".
+    """
     if host_os == "windows":
         proc = subprocess.Popen(["ping", "-n", "1", "-w", "1",  str(host)], stdout=subprocess.PIPE).stdout.read()
         if "ms" in proc.decode(encoding="utf_8", errors="ignore"):
