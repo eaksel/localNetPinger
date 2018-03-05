@@ -12,4 +12,5 @@ This script does the following:
 Once the necessary informations gathered, it sends an **ICMP Echo Request** to every possible host in the network.
 Finally it prints a list of IPs that replied with an **ICMP Echo Reply**, and a second list with the other IPs.
 
-*Tested on Debian 9 and Windows 10*
+*Written for Python 3 with standard library*
+*Tested on Debian 9 with Python 3.5.3 and Windows 10 with Python 3.6.4*
