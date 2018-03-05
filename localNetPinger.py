@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, subprocess, socket, ipaddress, threading, time
+import os, sys, subprocess, socket, ipaddress, threading, time, pprint
 
 host_name = socket.gethostname()
 
@@ -12,7 +12,8 @@ def get_ip():
         s.connect(('1.1.1.1', 1))
         ip = s.getsockname()[0]
     except:
-        ip = '127.0.0.1'
+        print("Couldn't find suitable IP address, exiting!" )
+        sys.exit(1)
     finally:
         s.close()
     return ip
@@ -72,56 +73,63 @@ input("I'll start pinging, press 'Enter' to continue (^C to abort).")
 icmp_alive = []
 icmp_unknown = []
 
-def ping(host):
+def ping_ptr(host):
     """
-    Send ping using the subprocess module. 
+    Send ping using the subprocess module.
+    Do a reverse DNS lookup for each IP.
     The variable "host_os" must be set to either "windows" or "linux".
     """
     if host_os == "windows":
         proc = subprocess.Popen(["ping", "-n", "1", "-w", "1",  str(host)], stdout=subprocess.PIPE).stdout.read()
         if "ms" in proc.decode(encoding="utf_8", errors="ignore"):
-            icmp_alive.append(host)
+            try:
+                host_rdns = socket.gethostbyaddr(str(host))
+                host_rdns = host_rdns[0]
+            except socket.herror:
+                host_rdns = "N/A"
+            icmp_alive.append({str(host): host_rdns})
         else:
-            icmp_unknown.append(host)
+            try:
+                host_rdns = socket.gethostbyaddr(str(host))
+                host_rdns = host_rdns[0]
+            except socket.herror:
+                host_rdns = "N/A"
+            icmp_unknown.append({str(host): host_rdns})
     elif host_os == "linux":
         proc = subprocess.Popen(["ping", "-c", "1", "-w", "1", str(host)], stdout=subprocess.PIPE).stdout.read()
         if "100%" in proc.decode(encoding="utf_8", errors="ignore"):
-            icmp_unknown.append(host)
+            try:
+                host_rdns = socket.gethostbyaddr(str(host))
+                host_rdns = host_rdns[0]
+            except socket.herror:
+                host_rdns = "N/A"
+            icmp_unknown.append({str(host): host_rdns})
         else:
-            icmp_alive.append(host)
-
+            try:
+                host_rdns = socket.gethostbyaddr(str(host))
+                host_rdns = host_rdns[0]
+            except socket.herror:
+                host_rdns = "N/A"
+            icmp_alive.append({str(host): host_rdns})
 
 for host in my_network_hosts:
-    threading.Thread(target=ping,args=(host,)).start()
+    threading.Thread(target=ping_ptr,args=(host,)).start()
 
 print()
-i = 5
+
+i = 15
 while i > 0:
     print("Scan done in ", i, " sec")
     time.sleep(1)
     i -= 1
+
 print()
-
-alive = []
-dead = []
-
-for host in icmp_alive:
-    host = str(host)
-    alive.append(host)
-
-for host in icmp_unknown:
-    host = str(host)
-    dead.append(host)
-
-alive.sort()
-dead.sort()
-
 print("The scan is done!\n")
-print("{} host(s) replied to our ICMP Echo Request: ".format(len(alive)))
-print(alive)
+print("{} host(s) replied to our ICMP Echo Request: ".format(len(icmp_alive)))
+pprint.pprint(icmp_alive)
 print()
-print("{} host(s) DIDN'T reply to our ICMP Echo Request: ".format(len(dead)))
-print(dead)
+print("{} host(s) DIDN'T reply to our ICMP Echo Request: ".format(len(icmp_unknown)))
+pprint.pprint(icmp_unknown)
 print("Beware: this doesn't mean that these IPs are available!")
 
 input("Press 'Enter' to quit.")
