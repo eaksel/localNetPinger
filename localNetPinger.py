@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, subprocess, socket, ipaddress, threading, time, pprint
+import ipaddress, pprint, socket, subprocess, sys, threading, time
 
 host_name = socket.gethostname()
 
@@ -73,6 +73,19 @@ input("I'll start pinging, press 'Enter' to continue (^C to abort).")
 icmp_alive = []
 icmp_unknown = []
 
+def get_ptr(host):
+    """
+    Function to return the reverse dns from an IP address using the socket module.
+    If ht reverse dns name isn't found, returns the string "N/A".
+    """
+    try:
+        ptr = socket.gethostbyaddr(str(host))
+        ptr = ptr[0]
+        return ptr
+    except socket.herror:
+        ptr = "N/A"
+        return ptr
+
 def ping_ptr(host):
     """
     Send ping using the subprocess module.
@@ -80,36 +93,20 @@ def ping_ptr(host):
     The variable "host_os" must be set to either "windows" or "linux".
     """
     if host_os == "windows":
-        proc = subprocess.Popen(["ping", "-n", "1", "-w", "1",  str(host)], stdout=subprocess.PIPE).stdout.read()
+        proc = subprocess.Popen(["ping", "-n", "1", "-w", "1000",  str(host)], stdout=subprocess.PIPE).stdout.read()
         if "ms" in proc.decode(encoding="utf_8", errors="ignore"):
-            try:
-                host_rdns = socket.gethostbyaddr(str(host))
-                host_rdns = host_rdns[0]
-            except socket.herror:
-                host_rdns = "N/A"
+            host_rdns = get_ptr(host)
             icmp_alive.append({str(host): host_rdns})
         else:
-            try:
-                host_rdns = socket.gethostbyaddr(str(host))
-                host_rdns = host_rdns[0]
-            except socket.herror:
-                host_rdns = "N/A"
+            host_rdns = get_ptr(host)
             icmp_unknown.append({str(host): host_rdns})
     elif host_os == "linux":
         proc = subprocess.Popen(["ping", "-c", "1", "-w", "1", str(host)], stdout=subprocess.PIPE).stdout.read()
         if "100%" in proc.decode(encoding="utf_8", errors="ignore"):
-            try:
-                host_rdns = socket.gethostbyaddr(str(host))
-                host_rdns = host_rdns[0]
-            except socket.herror:
-                host_rdns = "N/A"
+            host_rdns = get_ptr(host)
             icmp_unknown.append({str(host): host_rdns})
         else:
-            try:
-                host_rdns = socket.gethostbyaddr(str(host))
-                host_rdns = host_rdns[0]
-            except socket.herror:
-                host_rdns = "N/A"
+            host_rdns = get_ptr(host)
             icmp_alive.append({str(host): host_rdns})
 
 for host in my_network_hosts:
