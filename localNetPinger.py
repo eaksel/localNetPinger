@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import ipaddress, pprint, socket, subprocess, sys, threading, time
 
-host_name = socket.gethostname()
-
 def get_ip():
     """
     Get the IP address used to access the local network of the host.
@@ -18,8 +16,6 @@ def get_ip():
         s.close()
     return ip
 
-host_ip = get_ip()
-
 def get_os():
     """
     Get the OS platform of the host (Windows/Linux).
@@ -32,8 +28,6 @@ def get_os():
     else:
         print("The operating system of this host couldn't be determined.")
         sys.exit(1)
-
-host_os = get_os()
 
 def get_netmask():
     """
@@ -54,24 +48,6 @@ def get_netmask():
             if host_ip.encode() in line:
                 break
         return line.split()[1].decode().split("/")[1]
-
-host_netmask = get_netmask()
-
-my_ip = ipaddress.IPv4Interface("{}/{}".format(host_ip, host_netmask))
-my_network = my_ip.network
-my_network_hosts = list(my_network.hosts())
-
-print()
-print("-"*110)
-print("{} has the IP address: {}, it's network is {}.".format(host_name, host_ip, my_network))
-print("This network can have up to {} hosts.".format(len(my_network_hosts)))
-print("The first IP address: {}, last IP address: {}.".format(my_network_hosts[0], my_network_hosts[-1]))
-print("-"*110)
-print()
-input("I'll start pinging, press 'Enter' to continue (^C to abort).")
-
-icmp_alive = []
-icmp_unknown = []
 
 def get_ptr(host):
     """
@@ -109,10 +85,27 @@ def ping_ptr(host):
             host_rdns = get_ptr(host)
             icmp_alive.append({str(host): host_rdns})
 
+host_name = socket.gethostname()
+host_ip = get_ip()
+host_os = get_os()
+host_netmask = get_netmask()
+my_ip = ipaddress.IPv4Interface("{}/{}".format(host_ip, host_netmask))
+my_network = my_ip.network
+my_network_hosts = list(my_network.hosts())
+
+icmp_alive = []
+icmp_unknown = []
+
+print("-"*80)
+print("{} has the IP address: {}, its network is {}.".format(host_name, host_ip, my_network))
+print("This network can have up to {} hosts.".format(len(my_network_hosts)))
+print("First IP address: {}, last IP address: {}.".format(my_network_hosts[0], my_network_hosts[-1]))
+print("-"*80)
+print()
+input("I'll start pinging, press 'Enter' to continue (^C to abort).\n")
+
 for host in my_network_hosts:
     threading.Thread(target=ping_ptr,args=(host,)).start()
-
-print()
 
 i = 15
 while i > 0:
@@ -120,14 +113,13 @@ while i > 0:
     time.sleep(1)
     i -= 1
 
-print()
 print("The scan is done!\n")
 print("{} host(s) replied to our ICMP Echo Request: ".format(len(icmp_alive)))
 pprint.pprint(icmp_alive)
 print()
 print("{} host(s) DIDN'T reply to our ICMP Echo Request: ".format(len(icmp_unknown)))
 pprint.pprint(icmp_unknown)
-print("Beware: this doesn't mean that these IPs are available!")
+print("Beware: this doesn't mean that these IPs are available!\n")
 
 input("Press 'Enter' to quit.")
 sys.exit(0)
