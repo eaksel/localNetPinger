@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import ipaddress, pprint, socket, subprocess, sys, threading, time
+import datetime, ipaddress, os, pprint, socket, subprocess, sys, threading, time
 
 
 def get_ip():
@@ -8,7 +8,7 @@ def get_ip():
     """
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     try:
-        s.connect(('1.1.1.1', 1))
+        s.connect(("1.1.1.1", 1))
         ip = s.getsockname()[0]
     except:
         print("Couldn't find suitable IP address, exiting!" )
@@ -37,7 +37,7 @@ def get_netmask(host_os, host_ip):
     Get the netmask associated with the IP address retrieved by the "get_ip" function.
     """
     if host_os == "windows":
-        proc = subprocess.Popen('ipconfig',stdout=subprocess.PIPE)
+        proc = subprocess.Popen("ipconfig", stdout=subprocess.PIPE)
         while True:
             line = proc.stdout.readline()
             if host_ip.encode() in line:
@@ -45,7 +45,7 @@ def get_netmask(host_os, host_ip):
         return proc.stdout.readline().split()[-1].decode()
  
     elif host_os == "linux":
-        proc = subprocess.Popen(["ip", "a"],stdout=subprocess.PIPE)
+        proc = subprocess.Popen(["ip", "a"], stdout=subprocess.PIPE)
         while True:
             line = proc.stdout.readline()
             if host_ip.encode() in line:
@@ -91,6 +91,39 @@ def ping_ptr(host, host_os):
             icmp_alive.append({str(host): host_rdns})
 
 
+def beginning(host_name, host_ip, my_network, my_network_hosts):
+    print("-"*80)
+    print("{} has the IP address: {}, the network is {}.".format(host_name, host_ip, my_network))
+    print("This network can have up to {} hosts.".format(len(my_network_hosts)))
+    print("First IP address: {}, last IP address: {}.".format(my_network_hosts[0], my_network_hosts[-1]))
+    print("-"*80)
+    print()
+    input("Press 'Enter' to start pinging (^C to abort).\n")
+
+
+def ending(icmp_alive, icmp_unknown):
+    print("The scan is done!\n")
+    print("{} host(s) replied to our ICMP Echo Request: ".format(len(icmp_alive)))
+    pprint.pprint(icmp_alive)
+    print()
+    print("{} host(s) DIDN'T reply to our ICMP Echo Request: ".format(len(icmp_unknown)))
+    pprint.pprint(icmp_unknown)
+    print("Beware: this doesn't mean that these IPs are available!\n")
+
+
+def export_file(icmp_alive, icmp_unknown):
+    now = datetime.datetime.strftime(datetime.datetime.today(), "%Y-%m-%d_%H-%M")
+    file = "localNetPinger_" + now + ".txt"
+
+    with open(file, "w", encoding="utf-8") as f:
+        f.write("Responded to ping: " + str(icmp_alive))
+        f.write("\n")
+        f.write("Didn't respond to ping: " + str(icmp_unknown))
+    
+    print("File saved to: " + os.path.abspath(file))
+
+
+
 def main():
     host_name = socket.gethostname()
     host_ip = get_ip()
@@ -100,19 +133,13 @@ def main():
     my_network = my_ip.network
     my_network_hosts = list(my_network.hosts())
 
+    beginning(host_name, host_ip, my_network, my_network_hosts)
+
     global icmp_alive
     global icmp_unknown
 
     icmp_alive = []
     icmp_unknown = []
-
-    print("-"*80)
-    print("{} has the IP address: {}, the network is {}.".format(host_name, host_ip, my_network))
-    print("This network can have up to {} hosts.".format(len(my_network_hosts)))
-    print("First IP address: {}, last IP address: {}.".format(my_network_hosts[0], my_network_hosts[-1]))
-    print("-"*80)
-    print()
-    input("Press 'Enter' to start pinging (^C to abort).\n")
 
     for host in my_network_hosts:
         threading.Thread(target=ping_ptr,args=(host, host_os)).start()
@@ -122,17 +149,20 @@ def main():
         print("Scan done in ", i, " sec")
         time.sleep(1)
         i -= 1
+    
+    ending(icmp_alive, icmp_unknown)
 
-    print("The scan is done!\n")
-    print("{} host(s) replied to our ICMP Echo Request: ".format(len(icmp_alive)))
-    pprint.pprint(icmp_alive)
-    print()
-    print("{} host(s) DIDN'T reply to our ICMP Echo Request: ".format(len(icmp_unknown)))
-    pprint.pprint(icmp_unknown)
-    print("Beware: this doesn't mean that these IPs are available!\n")
+    exp = None
+    while exp != "y" or exp != "n":
+        exp = input("Would you like to export the result to a file ? (y/n)")
+        if exp == "y":
+            export_file(icmp_alive, icmp_unknown)
+            break
+        elif exp == "n":
+            break
 
-    input("Press 'Enter' to quit.")
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
