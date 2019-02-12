@@ -29,6 +29,7 @@ def get_os():
         return "linux"
     else:
         print("The operating system of this host couldn't be determined.")
+        print("Your OS is {}, only Windows and Linux are supported.".format(icmp_unknown))
         sys.exit(1)
 
 
