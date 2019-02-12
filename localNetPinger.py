@@ -123,7 +123,6 @@ def export_file(icmp_alive, icmp_unknown):
     print("File saved to: " + os.path.abspath(file))
 
 
-
 def main():
     host_name = socket.gethostname()
     host_ip = get_ip()
@@ -134,12 +133,6 @@ def main():
     my_network_hosts = list(my_network.hosts())
 
     beginning(host_name, host_ip, my_network, my_network_hosts)
-
-    global icmp_alive
-    global icmp_unknown
-
-    icmp_alive = []
-    icmp_unknown = []
 
     for host in my_network_hosts:
         threading.Thread(target=ping_ptr,args=(host, host_os)).start()
@@ -165,4 +158,6 @@ def main():
 
 
 if __name__ == "__main__":
+    icmp_alive = []
+    icmp_unknown = []
     main()
