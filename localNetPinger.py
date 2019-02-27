@@ -78,18 +78,22 @@ def ping_ptr(host, host_os):
         proc = subprocess.Popen(["ping", "-n", "1", "-w", "1000",  str(host)], stdout=subprocess.PIPE).stdout.read()
         if "ms" in proc.decode(encoding="utf_8", errors="ignore"):
             host_rdns = get_ptr(host)
-            icmp_alive.append({str(host): host_rdns})
+            ping_result(icmp_alive, host, host_rdns)
         else:
             host_rdns = get_ptr(host)
-            icmp_unknown.append({str(host): host_rdns})
+            ping_result(icmp_unknown, host, host_rdns)
     elif host_os == "linux":
         proc = subprocess.Popen(["ping", "-c", "1", "-w", "1", str(host)], stdout=subprocess.PIPE).stdout.read()
         if "100%" in proc.decode(encoding="utf_8", errors="ignore"):
             host_rdns = get_ptr(host)
-            icmp_unknown.append({str(host): host_rdns})
+            ping_result(icmp_unknown, host, host_rdns)
         else:
             host_rdns = get_ptr(host)
-            icmp_alive.append({str(host): host_rdns})
+            ping_result(icmp_alive, host, host_rdns)
+
+
+def ping_result(listname, host, hostname):
+    listname.append({"ip": str(host), "hostname": hostname})
 
 
 def beginning(host_name, host_ip, my_network, my_network_hosts):
@@ -117,9 +121,9 @@ def export_file(icmp_alive, icmp_unknown):
     file = "localNetPinger_" + now + ".txt"
 
     with open(file, "w", encoding="utf-8") as f:
-        f.write("Responded to ping: " + str(icmp_alive))
-        f.write("\n")
-        f.write("Didn't respond to ping: " + str(icmp_unknown))
+        f.write("Responding to ping: " + str(icmp_alive))
+        f.write("\n\n")
+        f.write("Silent to ping: " + str(icmp_unknown))
     
     print("File saved to: " + os.path.abspath(file))
 
