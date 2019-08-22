@@ -139,19 +139,25 @@ def main():
 
     beginning(host_name, host_ip, my_network, my_network_hosts)
 
+    threads = []
     for host in my_network_hosts:
-        threading.Thread(target=ping_ptr,args=(host, host_os)).start()
+        proc = threading.Thread(target=ping_ptr, args=(
+            host, host_os))
+        proc.start()
+        threads.append(proc)
 
-    i = 15
-    while i > 0:
-        print("Scan done in ", i, " sec")
-        time.sleep(1)
-        i -= 1
-    
+    start = time.time()
+    print("Scan in progress...")
+
+    for proc in threads:
+        proc.join()
+
+    end = time.time()
+    print(f"The scan completed in {end - start} seconds.\n")
+
     ending(icmp_alive, icmp_unknown)
 
-    exp = None
-    while exp != "y" or exp != "n":
+    while True:
         exp = input("Would you like to export the result to a file ? (y/n)")
         if exp == "y":
             export_file(icmp_alive, icmp_unknown)
