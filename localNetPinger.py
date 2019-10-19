@@ -29,7 +29,7 @@ def get_os():
         return "linux"
     else:
         print("The operating system of this host couldn't be determined.")
-        print("Your OS is {}, only Windows and Linux are supported.".format(icmp_unknown))
+        print(f"Your OS is {my_os}, only Windows and Linux are supported.")
         sys.exit(1)
 
 
@@ -98,9 +98,9 @@ def ping_result(listname, host, hostname):
 
 def beginning(host_name, host_ip, my_network, my_network_hosts):
     print("-"*80)
-    print("{} has the IP address: {}, the network is {}.".format(host_name, host_ip, my_network))
-    print("This network can have up to {} hosts.".format(len(my_network_hosts)))
-    print("First IP address: {}, last IP address: {}.".format(my_network_hosts[0], my_network_hosts[-1]))
+    print(f"{host_name} has the IP address: {host_ip}, the network is {my_network}.")
+    print(f"This network can have up to {len(my_network_hosts)} hosts.")
+    print(f"First IP address: {my_network_hosts[0]}, last IP address: {my_network_hosts[-1]}.")
     print("-"*80)
     print()
     input("Press 'Enter' to start pinging (^C to abort).\n")
@@ -108,10 +108,10 @@ def beginning(host_name, host_ip, my_network, my_network_hosts):
 
 def ending(icmp_alive, icmp_unknown):
     print("The scan is done!\n")
-    print("{} host(s) replied to our ICMP Echo Request: ".format(len(icmp_alive)))
+    print(f"{len(icmp_alive)} host(s) replied to our ICMP Echo Request:")
     pprint.pprint(icmp_alive)
     print()
-    print("{} host(s) DIDN'T reply to our ICMP Echo Request: ".format(len(icmp_unknown)))
+    print(f"{len(icmp_unknown)} host(s) DIDN'T reply to our ICMP Echo Request:")
     pprint.pprint(icmp_unknown)
     print("Beware: this doesn't mean that these IPs are available!\n")
 
@@ -133,7 +133,7 @@ def main():
     host_ip = get_ip()
     host_os = get_os()
     host_netmask = get_netmask(host_os, host_ip)
-    my_ip = ipaddress.IPv4Interface("{}/{}".format(host_ip, host_netmask))
+    my_ip = ipaddress.IPv4Interface(f"{host_ip}/{host_netmask}")
     my_network = my_ip.network
     my_network_hosts = list(my_network.hosts())
 
@@ -153,7 +153,7 @@ def main():
         proc.join()
 
     end = time.time()
-    print(f"The scan completed in {end - start} seconds.\n")
+    print(f"The scan took {end - start} seconds.\n")
 
     ending(icmp_alive, icmp_unknown)
 
