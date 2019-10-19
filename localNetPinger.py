@@ -66,32 +66,33 @@ def get_ptr(host):
         return ptr
 
 
-def ping_ptr(host, host_os):
+def ping_ptr(host, host_os, icmp_success, icmp_error):
     """
     Send ping using the subprocess module.
     Do a reverse DNS lookup for each IP.
     The variable "host_os" must be set to either "windows" or "linux".
     """
     if host_os == "windows":
-        proc = subprocess.Popen(["ping", "-n", "1", "-w", "1000",  str(host)], stdout=subprocess.PIPE).stdout.read()
-        if "ms" in proc.decode(encoding="utf_8", errors="ignore"):
+        output = subprocess.run(["ping", "-n", "1", "-w", "1000", str(host)], capture_output=True, text=True)
+        if "ms" in output.stdout:
             host_rdns = get_ptr(host)
-            ping_result(icmp_alive, host, host_rdns)
+            ping_result(icmp_success, host, host_rdns)
         else:
             host_rdns = get_ptr(host)
-            ping_result(icmp_unknown, host, host_rdns)
-    elif host_os == "linux":
-        proc = subprocess.Popen(["ping", "-c", "1", "-w", "1", str(host)], stdout=subprocess.PIPE).stdout.read()
-        if "100%" in proc.decode(encoding="utf_8", errors="ignore"):
+            ping_result(icmp_error, host, host_rdns)
+
+    if host_os == "linux":
+        output = subprocess.run(["ping", "-c", "1", "-w", "1", str(host)], capture_output=True, text=True)
+        if "rtt" in output.stdout:
             host_rdns = get_ptr(host)
-            ping_result(icmp_unknown, host, host_rdns)
+            ping_result(icmp_success, host, host_rdns)
         else:
             host_rdns = get_ptr(host)
-            ping_result(icmp_alive, host, host_rdns)
+            ping_result(icmp_error, host, host_rdns)
 
 
-def ping_result(listname, host, hostname):
-    listname.append({"ip": str(host), "hostname": hostname})
+def ping_result(list_name, host, hostname):
+    list_name.append({"ip": str(host), "hostname": hostname})
 
 
 def beginning(host_name, host_ip, my_network, my_network_hosts):
@@ -104,24 +105,24 @@ def beginning(host_name, host_ip, my_network, my_network_hosts):
     input("Press 'Enter' to start pinging (^C to abort).\n")
 
 
-def ending(icmp_alive, icmp_unknown):
+def ending(icmp_success, icmp_error):
     print("The scan is done!\n")
-    print(f"{len(icmp_alive)} host(s) replied to our ICMP Echo Request:")
-    pprint.pprint(icmp_alive)
+    print(f"{len(icmp_success)} host(s) replied to our ICMP Echo Request:")
+    pprint.pprint(icmp_success)
     print()
-    print(f"{len(icmp_unknown)} host(s) DIDN'T reply to our ICMP Echo Request:")
-    pprint.pprint(icmp_unknown)
+    print(f"{len(icmp_error)} host(s) DIDN'T reply to our ICMP Echo Request:")
+    pprint.pprint(icmp_error)
     print("Beware: this doesn't mean that these IPs are available!\n")
 
 
-def export_file(icmp_alive, icmp_unknown):
+def export_file(icmp_success, icmp_error):
     now = datetime.datetime.strftime(datetime.datetime.today(), "%Y-%m-%d_%H-%M")
     file = "localNetPinger_" + now + ".txt"
 
     with open(file, "w", encoding="utf-8") as f:
-        f.write("Responding to ping: " + str(icmp_alive))
+        f.write("Responding to ping:\n" + str(icmp_success))
         f.write("\n\n")
-        f.write("Silent to ping: " + str(icmp_unknown))
+        f.write("Silent to ping:\n" + str(icmp_error))
     
     print("File saved to: " + os.path.abspath(file))
 
@@ -135,12 +136,14 @@ def main():
     my_network = my_ip.network
     my_network_hosts = list(my_network.hosts())
 
+    icmp_success = []
+    icmp_error = []
+
     beginning(host_name, host_ip, my_network, my_network_hosts)
 
     threads = []
     for host in my_network_hosts:
-        proc = threading.Thread(target=ping_ptr, args=(
-            host, host_os))
+        proc = threading.Thread(target=ping_ptr, args=(host, host_os, icmp_success, icmp_error))
         proc.start()
         threads.append(proc)
 
@@ -153,20 +156,18 @@ def main():
     end = time.time()
     print(f"The scan took {end - start} seconds.\n")
 
-    ending(icmp_alive, icmp_unknown)
+    ending(icmp_success, icmp_error)
 
     while True:
-        exp = input("Would you like to export the result to a file ? (y/n)")
-        if exp == "y":
-            export_file(icmp_alive, icmp_unknown)
+        export = input("Would you like to export the result to a file ? (y/n)")
+        if export == "y":
+            export_file(icmp_success, icmp_error)
             break
-        elif exp == "n":
+        elif export == "n":
             break
 
     sys.exit(0)
 
 
 if __name__ == "__main__":
-    icmp_alive = []
-    icmp_unknown = []
     main()
