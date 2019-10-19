@@ -11,7 +11,7 @@ def get_ip():
         s.connect(("1.1.1.1", 1))
         ip = s.getsockname()[0]
     except:
-        print("Couldn't find suitable IP address, exiting!" )
+        print("Couldn't find a suitable IP address, exiting!" )
         sys.exit(1)
     finally:
         s.close()
@@ -38,20 +38,18 @@ def get_netmask(host_os, host_ip):
     Get the netmask associated with the IP address retrieved by the "get_ip" function.
     """
     if host_os == "windows":
-        proc = subprocess.Popen("ipconfig", stdout=subprocess.PIPE)
-        while True:
-            line = proc.stdout.readline()
-            if host_ip.encode() in line:
-                break
-        return proc.stdout.readline().split()[-1].decode()
- 
-    elif host_os == "linux":
-        proc = subprocess.Popen(["ip", "a"], stdout=subprocess.PIPE)
-        while True:
-            line = proc.stdout.readline()
-            if host_ip.encode() in line:
-                break
-        return line.split()[1].decode().split("/")[1]
+        output = subprocess.run(["ipconfig"], capture_output=True, text=True)
+        output = output.stdout.splitlines()
+        for i, line in enumerate(output):
+            if host_ip in line:
+                return output[i+1].split()[-1]
+
+    if host_os == "linux":
+        output = subprocess.run(["ip", "a"], capture_output=True, text=True)
+        output = output.stdout.splitlines()
+        for i, line in enumerate(output):
+            if host_ip in line:
+                return line.split()[1].split("/")[1]
 
 
 def get_ptr(host):
