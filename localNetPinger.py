@@ -156,6 +156,9 @@ def main():
     end = time.time()
     print(f"The scan took {end - start} seconds.\n")
 
+    icmp_success.sort(key=lambda x: int(x["ip"].split(".")[3]))
+    icmp_error.sort(key=lambda x: int(x["ip"].split(".")[3]))
+
     ending(icmp_success, icmp_error)
 
     while True:
