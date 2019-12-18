@@ -20,16 +20,15 @@ def get_ip():
 
 def get_os():
     """
-    Get the OS platform of the host (Windows/Linux).
+    Get the OS platform of the host (Windows/Linux/macOS).
     """
-    my_os = sys.platform
-    if "win" in my_os.lower():
-        return "windows"
-    elif "linux" in my_os.lower():
-        return "linux"
+    current_os = sys.platform.lower()
+    supported_os = ["win32", "linux", "darwin"]
+    if current_os in supported_os:
+        return current_os
     else:
         print("The operating system of this host couldn't be determined.")
-        print(f"Your OS is {my_os}, only Windows and Linux are supported.")
+        print(f"Your OS is {current_os}, only Windows and Linux and macOS are supported.")
         sys.exit(1)
 
 
@@ -37,7 +36,7 @@ def get_netmask(host_os, host_ip):
     """
     Get the netmask associated with the IP address retrieved by the "get_ip" function.
     """
-    if host_os == "windows":
+    if host_os == "win32":
         output = subprocess.run(["ipconfig"], capture_output=True, text=True)
         output = output.stdout.splitlines()
         for i, line in enumerate(output):
@@ -47,9 +46,17 @@ def get_netmask(host_os, host_ip):
     if host_os == "linux":
         output = subprocess.run(["ip", "a"], capture_output=True, text=True)
         output = output.stdout.splitlines()
-        for i, line in enumerate(output):
+        for line in output:
             if host_ip in line:
                 return line.split()[1].split("/")[1]
+
+    if host_os == "darwin":
+        output = subprocess.run(["ifconfig"], capture_output=True, text=True)
+        output = output.stdout.splitlines()
+        for line in output:
+            if host_ip in line:
+                netmask_hex = line.split()[3][2:]
+                return ".".join([str(int(netmask_hex[i:i + 2], 16)) for i in range(0, len(netmask_hex), 2)])
 
 
 def get_ptr(host):
@@ -70,9 +77,9 @@ def ping_ptr(host, host_os, icmp_success, icmp_error):
     """
     Send ping using the subprocess module.
     Do a reverse DNS lookup for each IP.
-    The variable "host_os" must be set to either "windows" or "linux".
+    The variable "host_os" must be set to either "win32", "linux" or "darwin".
     """
-    if host_os == "windows":
+    if host_os == "win32":
         output = subprocess.run(["ping", "-n", "1", "-w", "1000", str(host)], capture_output=True, text=True)
         if "ms" in output.stdout:
             host_rdns = get_ptr(host)
@@ -84,6 +91,16 @@ def ping_ptr(host, host_os, icmp_success, icmp_error):
     if host_os == "linux":
         output = subprocess.run(["ping", "-c", "1", "-w", "1", str(host)], capture_output=True, text=True)
         if "rtt" in output.stdout:
+            host_rdns = get_ptr(host)
+            ping_result(icmp_success, host, host_rdns)
+        else:
+            host_rdns = get_ptr(host)
+            ping_result(icmp_error, host, host_rdns)
+
+    if host_os == "darwin":
+        output = subprocess.run(
+            ["ping", "-c", "1", "-W", "1000", str(host)], capture_output=True, text=True)
+        if "round-trip" in output.stdout:
             host_rdns = get_ptr(host)
             ping_result(icmp_success, host, host_rdns)
         else:
@@ -154,7 +171,7 @@ def main():
         proc.join()
 
     end = time.time()
-    print(f"The scan took {end - start} seconds.\n")
+    print(f"The scan took {end - start:.2f} seconds.\n")
 
     icmp_success.sort(key=lambda x: int(x["ip"].split(".")[3]))
     icmp_error.sort(key=lambda x: int(x["ip"].split(".")[3]))
